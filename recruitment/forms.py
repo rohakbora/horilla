@@ -359,6 +359,7 @@ class CandidateCreationForm(ModelForm):
         self.fields["profile"].required = False
         self.fields["resume"].widget.attrs["accept"] = ".pdf"
         self.fields["resume"].required = False
+        print(121,self.instance.recruitment_id)
         if self.instance.recruitment_id is not None:
             if self.instance is not None:
                 self.fields["job_position_id"] = forms.ModelChoiceField(

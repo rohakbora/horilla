@@ -3,33 +3,33 @@ assets/sidebar.py
 """
 
 from django.urls import reverse
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_lazy as trans
 
-MENU = _("Assets")
+MENU = trans("Assets")
 IMG_SRC = "images/ui/assets.svg"
 
 SUBMENUS = [
     {
-        "menu": _("Dashboard"),
+        "menu": trans("Dashboard"),
         "redirect": reverse("asset-dashboard"),
         "accessibility": "asset.sidebar.dashboard_accessibility",
     },
     {
-        "menu": _("Asset View"),
+        "menu": trans("Asset View"),
         "redirect": reverse("asset-category-view"),
         "accessibility": "asset.sidebar.dashboard_accessibility",
     },
     {
-        "menu": _("Asset Batches"),
+        "menu": trans("Asset Batches"),
         "redirect": reverse("asset-batch-view"),
         "accessibility": "asset.sidebar.lot_accessibility",
     },
     {
-        "menu": _("Request and Allocation"),
+        "menu": trans("Request and Allocation"),
         "redirect": reverse("asset-request-allocation-view"),
     },
     {
-        "menu": _("Asset History"),
+        "menu": trans("Asset History"),
         "redirect": reverse("asset-history"),
         "accessibility": "asset.sidebar.history_accessibility",
     },

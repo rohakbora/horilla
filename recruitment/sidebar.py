@@ -6,7 +6,7 @@ To set Horilla sidebar for onboarding
 
 from django.contrib.auth.context_processors import PermWrapper
 from django.urls import reverse
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_lazy as trans
 
 from recruitment.models import InterviewSchedule
 from recruitment.templatetags.recruitmentfilters import (
@@ -14,52 +14,52 @@ from recruitment.templatetags.recruitmentfilters import (
     is_stagemanager,
 )
 
-MENU = _("Recruitment")
+MENU = trans("Recruitment")
 ACCESSIBILITY = "recruitment.sidebar.menu_accessibilty"
 IMG_SRC = "images/ui/recruitment.svg"
 
 SUBMENUS = [
     {
-        "menu": _("Dashboard"),
+        "menu": trans("Dashboard"),
         "redirect": reverse("recruitment-dashboard"),
     },
     {
-        "menu": _("Recruitment Pipeline"),
+        "menu": trans("Recruitment Pipeline"),
         "redirect": reverse("pipeline"),
         "accessibility": "recruitment.sidebar.pipeline_accessibility",
     },
     {
-        "menu": _("Recruitment Survey"),
+        "menu": trans("Recruitment Survey"),
         "redirect": reverse("recruitment-survey-question-template-view"),
         "accessibility": "recruitment.sidebar.survey_accessibility",
     },
     {
-        "menu": _("Candidates"),
+        "menu": trans("Candidates"),
         "redirect": reverse("candidate-view"),
         "accessibility": "recruitment.sidebar.candidates_accessibility",
     },
     {
-        "menu": _("Interview"),
+        "menu": trans("Interview"),
         "redirect": reverse("interview-view"),
         "accessibility": "recruitment.sidebar.interview_accessibility",
     },
     {
-        "menu": _("Recruitment"),
+        "menu": trans("Recruitment"),
         "redirect": reverse("recruitment-view"),
         "accessibility": "recruitment.sidebar.recruitment_accessibility",
     },
     {
-        "menu": _("Open Jobs"),
+        "menu": trans("Open Jobs"),
         "redirect": reverse("open-recruitments"),
         "accessibility": "recruitment.sidebar.recruitment_accessibility",
     },
     {
-        "menu": _("Stages"),
+        "menu": trans("Stages"),
         "redirect": reverse("rec-stage-view"),
         "accessibility": "recruitment.sidebar.stage_accessibility",
     },
     {
-        "menu": _("Skill Zone"),
+        "menu": trans("Skill Zone"),
         "redirect": reverse("skill-zone-view"),
         "accessibility": "recruitment.sidebar.skill_zone_accessibility",
     },

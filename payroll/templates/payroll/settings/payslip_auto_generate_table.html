@@ -19,7 +19,8 @@
 				<div class="oh-sticky-table__td">{{auto.get_generate_day_display}}</div>
 				<div class="oh-sticky-table__td">
                     {% if auto.company_id is none %}
-                        {% trans "All company" %}
+                        {% trans "All Company" %}
+                        {% comment %} #redundant {% endcomment %}
                     {% else %}
                         {{auto.company_id}}
                     {% endif %}</div>

@@ -1,6 +1,5 @@
 import calendar
 import datetime as dt
-import sys
 from datetime import datetime, timedelta
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -10,10 +9,7 @@ today = datetime.now()
 
 
 def recruitment_close():
-    """
-    Closes recruitment campaigns that have reached their end date.
 
-    """
     from recruitment.models import Recruitment
 
     today_date = today.date()
@@ -29,33 +25,42 @@ def recruitment_close():
 
 
 def candidate_convert():
-    """
-    Converts candidates to a "converted" state if they already exist as users.
-    """
-    from django.contrib.auth.models import User
+    try:
+        from django.contrib.auth.models import User
+        from recruitment.models import Candidate
 
-    from recruitment.models import Candidate
+        existing_emails = set(User.objects.values_list("email", flat=True))
+        candidates = Candidate.objects.filter(is_active=True, email__in=existing_emails)    #redundant
 
-    candidates = Candidate.objects.filter(is_active=True)
-    mails = list(Candidate.objects.values_list("email", flat=True))
-    existing_emails = list(
-        User.objects.filter(username__in=mails).values_list("email", flat=True)
-    )
-    for cand in candidates:
-        if cand.email in existing_emails:
+        for cand in candidates:
             cand.converted = True
             cand.save()
 
+    except Exception as e:
+        print(f"Error during candidate conversion: {e}")
 
-if not any(
-    cmd in sys.argv
-    for cmd in ["makemigrations", "migrate", "compilemessages", "flush", "shell"]
-):
-    """
-    Initializes and starts background tasks using APScheduler when the server is running.
-    """
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(candidate_convert, "interval", seconds=10)
-    scheduler.add_job(recruitment_close, "interval", hours=1)
+# def candidate_convert():
 
-    scheduler.start()
+#     from django.contrib.auth.models import User
+
+#     from recruitment.models import Candidate
+
+#     candidates = Candidate.objects.filter(is_active=True)
+#     mails = list(Candidate.objects.values_list("email", flat=True))
+#     existing_emails = list(
+#         User.objects.filter(username__in=mails).values_list("email", flat=True)
+#     )
+#     print("hello: ",mails)        #redundant
+#     for cand in candidates:
+#         print("1.",cand.email)      #redundant
+#         if cand.email in existing_emails:
+#             cand.converted = True
+#             cand.save()
+
+
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(candidate_convert, "interval", seconds=10)
+scheduler.add_job(recruitment_close, "interval", hours=1)
+
+scheduler.start()

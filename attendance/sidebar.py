@@ -5,51 +5,51 @@ attendance/sidebar.py
 from datetime import datetime
 
 from django.urls import reverse
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_lazy as trans
 
 from base.context_processors import enable_late_come_early_out_tracking
 from base.templatetags.basefilters import is_reportingmanager
 
-MENU = _("Attendance")
+MENU = trans("Attendance")
 IMG_SRC = "images/ui/attendances.svg"
 
 
 SUBMENUS = [
     {
-        "menu": _("Dashboard"),
+        "menu": trans("Dashboard"),
         "redirect": reverse("attendance-dashboard"),
         "accessibility": "attendance.sidebar.dashboard_accessibility",
     },
     {
-        "menu": _("Attendances"),
+        "menu": trans("Attendances"),
         "redirect": reverse("attendance-view"),
         "accessibility": "attendance.sidebar.attendances_accessibility",
     },
     {
-        "menu": _("Attendance Requests"),
+        "menu": trans("Attendance Requests"),
         "redirect": reverse("request-attendance-view"),
     },
     {
-        "menu": _("Hour Account"),
+        "menu": trans("Hour Account"),
         "redirect": reverse("attendance-overtime-view"),
         "accessibility": "attendance.sidebar.hour_account_accessibility",
     },
     {
-        "menu": _("Work Records"),
+        "menu": trans("Work Records"),
         "redirect": reverse("work-records"),
         "accessibility": "attendance.sidebar.work_record_accessibility",
     },
     {
-        "menu": _("Attendance Activities"),
+        "menu": trans("Attendance Activities"),
         "redirect": reverse("attendance-activity-view"),
     },
     {
-        "menu": _("Late Come Early Out"),
+        "menu": trans("Late Come Early Out"),
         "redirect": reverse("late-come-early-out-view"),
         "accessibility": "attendance.sidebar.tracking_accessibility",
     },
     {
-        "menu": _("My Attendances"),
+        "menu": trans("My Attendances"),
         "redirect": reverse("view-my-attendance"),
     },
 ]

@@ -199,16 +199,12 @@ def clock_in(request):
     This method is used to mark the attendance once per a day and multiple attendance activities.
     """
     # check wether check in/check out feature is enabled
-    selected_company = request.session.get("selected_company")
-    if selected_company == "all":
-        attendance_general_settings = AttendanceGeneralSetting.objects.filter(
-            company_id=None
-        ).first()
-    else:
-        company = Company.objects.filter(id=selected_company).first()
-        attendance_general_settings = AttendanceGeneralSetting.objects.filter(
-            company_id=company
-        ).first()
+    selected_company = 2
+    print(223,selected_company)
+    company = Company.objects.filter(id=selected_company).first()
+    attendance_general_settings = AttendanceGeneralSetting.objects.filter(
+        company_id=company
+    ).first()
     # request.__dict__.get("datetime")' used to check if the request is from a biometric device
     if (
         attendance_general_settings
@@ -480,16 +476,12 @@ def clock_out(request):
     This method is used to set the out date and time for attendance and attendance activity
     """
     # check wether check in/check out feature is enabled
-    selected_company = request.session.get("selected_company")
-    if selected_company == "all":
-        attendance_general_settings = AttendanceGeneralSetting.objects.filter(
-            company_id=None
-        ).first()
-    else:
-        company = Company.objects.filter(id=selected_company).first()
-        attendance_general_settings = AttendanceGeneralSetting.objects.filter(
-            company_id=company
-        ).first()
+    selected_company = 2
+    company = Company.objects.filter(id=selected_company).first()
+    # request.__dict__.get("datetime")' used to check if the request is from a biometric device
+    attendance_general_settings = AttendanceGeneralSetting.objects.filter(
+        company_id=company
+    ).first()
     if (
         attendance_general_settings
         and attendance_general_settings.enable_check_in

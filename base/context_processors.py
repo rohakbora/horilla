@@ -14,12 +14,7 @@ from django.utils.translation import gettext_lazy as _
 
 from base.models import Company, TrackLateComeEarlyOut
 from base.urls import urlpatterns
-from employee.models import (
-    Employee,
-    EmployeeGeneralSetting,
-    EmployeeWorkInformation,
-    ProfileEditFeature,
-)
+from employee.models import Employee, EmployeeGeneralSetting, EmployeeWorkInformation
 from horilla import horilla_apps
 from horilla.decorators import hx_request_required, login_required, permission_required
 from horilla.methods import get_horilla_model_class
@@ -33,9 +28,9 @@ class AllCompany:
     class Urls:
         url = "https://ui-avatars.com/api/?name=All+Company&background=random"
 
-    company = "All Company"
+    company = "All Company"     #"All Company"  #redundant
     icon = Urls()
-    text = "All companies"
+    text = "All companies"        #"All companies"    #redundant
     id = None
 
 
@@ -59,7 +54,7 @@ def get_companies(request):
     companies = [
         [
             "all",
-            "All Company",
+            "All Company",      #"All Company",     #redundant
             "https://ui-avatars.com/api/?name=All+Company&background=random",
             False,
         ],
@@ -289,15 +284,3 @@ def enable_late_come_early_out_tracking(request):
     tracking = TrackLateComeEarlyOut.objects.first()
     enable = tracking.is_enable if tracking else True
     return {"tracking": enable, "late_come_early_out_tracking": enable}
-
-
-def enable_profile_edit(request):
-    from accessibility.accessibility import ACCESSBILITY_FEATURE
-
-    profile_edit = ProfileEditFeature.objects.filter().first()
-    enable = True if profile_edit and profile_edit.is_enabled else False
-    if enable:
-        if not any(item[0] == "profile_edit" for item in ACCESSBILITY_FEATURE):
-            ACCESSBILITY_FEATURE.append(("profile_edit", _("Profile Edit Access")))
-
-    return {"profile_edit_enabled": enable}

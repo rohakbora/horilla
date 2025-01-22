@@ -197,7 +197,7 @@
                         </button>
                     </div>
                 {% endif %}
-                <div class="oh-btn-group ml-2">
+                {% comment %} <div class="oh-btn-group ml-2">
                     <a
                         href="{% url 'candidate-create' %}?onboarding=True"
                         class="oh-btn oh-btn--secondary oh-btn--shadow"
@@ -206,7 +206,7 @@
                         <ion-icon name="add-outline" class="me-1"></ion-icon>
                         {% trans "Create" %}
                     </a>
-                </div>
+                </div> {% endcomment %}
             </div>
         </div>
     </form>

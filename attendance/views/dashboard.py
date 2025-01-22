@@ -413,14 +413,9 @@ def department_overtime_chart(request):
     department_total = []
 
     for attendance in attendances:
-        if (
-            attendance.employee_id
-            and attendance.employee_id.employee_work_info
-            and attendance.employee_id.employee_work_info.department_id
-        ):
-            departments.append(
-                attendance.employee_id.employee_work_info.department_id.department
-            )
+        departments.append(
+            attendance.employee_id.employee_work_info.department_id.department
+        )
     departments = list(set(departments))
 
     for depart in departments:

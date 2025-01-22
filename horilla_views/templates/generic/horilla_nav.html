@@ -129,6 +129,7 @@
                         filterData[key] = value;
                     }
                 });
+                console.log(filterData)
                 $.ajax({
                   type: 'get',
                   url: `{% url 'last-applied-filter' %}`,

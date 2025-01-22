@@ -2,7 +2,6 @@
 employee/methods.py
 """
 
-import logging
 import threading
 from datetime import datetime
 from itertools import groupby
@@ -23,8 +22,6 @@ from base.models import (
     WorkType,
 )
 from employee.models import Employee, EmployeeWorkInformation
-
-logger = logging.getLogger(__name__)
 
 
 def convert_nan(field, dicts):
@@ -142,10 +139,9 @@ def bulk_create_user_import(success_lists):
             is_superuser=False,
         )
         user_obj_list.append(user_obj)
-    result = []
+
     if user_obj_list:
-        result = User.objects.bulk_create(user_obj_list)
-    return result
+        User.objects.bulk_create(user_obj_list)
 
 
 def bulk_create_employee_import(success_lists):
@@ -171,6 +167,7 @@ def bulk_create_employee_import(success_lists):
         last_name = convert_nan("Last Name", work_info)
         phone = work_info["Phone"]
         gender = work_info.get("Gender", "").lower()
+
         employee_obj = Employee(
             employee_user_id=user,
             badge_id=badge_id,
@@ -181,26 +178,11 @@ def bulk_create_employee_import(success_lists):
             gender=gender,
         )
         employee_obj_list.append(employee_obj)
-    result = []
+
     if employee_obj_list:
-        result = Employee.objects.bulk_create(employee_obj_list)
+        Employee.objects.bulk_create(employee_obj_list)
 
-    return result
-
-
-def set_initial_password(employees):
-    """
-    method to set initial password
-    """
-
-    logger.info("started to set initial password")
-    for employee in employees:
-        try:
-            employee.employee_user_id.set_password(str(employee.phone))
-            employee.employee_user_id.save()
-        except Exception as e:
-            logger.error(f"falied to set initial password for {employee}")
-    logger.info("initial password configured")
+    return len(employee_obj_list)
 
 
 def optimize_reporting_manager_lookup(success_lists):

@@ -87,10 +87,8 @@ def create_announcement(request):
             employees = form.cleaned_data["employees"]
             departments = form.cleaned_data["department"]
             job_positions = form.cleaned_data["job_position"]
-            company = form.cleaned_data["company_id"]
             anou.department.set(departments)
             anou.job_position.set(job_positions)
-            anou.company_id.set(company)
             messages.success(request, _("Announcement created successfully."))
 
             emp_dep = User.objects.filter(
@@ -181,10 +179,8 @@ def update_announcement(request, anoun_id):
             employees = form.cleaned_data["employees"]
             departments = form.cleaned_data["department"]
             job_positions = form.cleaned_data["job_position"]
-            company = form.cleaned_data["company_id"]
             anou.department.set(departments)
             anou.job_position.set(job_positions)
-            anou.company_id.set(company)
             messages.success(request, _("Announcement updated successfully."))
 
             emp_dep = User.objects.filter(

@@ -44,7 +44,7 @@ class AccessibilityFilter(HorillaFilterSet):
     )
     exluded_employees = django_filters.ModelMultipleChoiceFilter(
         queryset=Employee.objects.all(),
-        label=_("Exclude Employees"),
+        label=_("Exlude Employees"),
     )
 
     verbose_name = {

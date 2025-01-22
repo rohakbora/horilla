@@ -6,7 +6,6 @@ from distutils.version import (  # pylint: disable=no-name-in-module,import-erro
 )
 
 from django import get_version
-from django.urls import path
 
 from . import views
 
@@ -44,11 +43,6 @@ urlpatterns = [
         r"^api/all_list/",
         views.live_all_notification_list,
         name="live_all_notification_list",
-    ),
-    path(
-        "notification-sound",
-        views.notification_sound,
-        name="notification-sound",
     ),
 ]
 

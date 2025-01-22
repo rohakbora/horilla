@@ -219,8 +219,7 @@ class EncashmentGeneralSettingsForm(ModelForm):
         model = EncashmentGeneralSettings
         fields = "__all__"
 
-
-class DashboardExport(Form):
+class DashboardExport(forms.Form):
     status_choices = [
         ("", ""),
         ("draft", "Draft"),
@@ -228,6 +227,7 @@ class DashboardExport(Form):
         ("confirmed", "Confirmed"),
         ("paid", "Paid"),
     ]
+    
     start_date = forms.DateField(
         required=False,
         widget=forms.DateInput(attrs={"type": "date", "class": "oh-input w-100"}),
@@ -236,17 +236,42 @@ class DashboardExport(Form):
         required=False,
         widget=forms.DateInput(attrs={"type": "date", "class": "oh-input w-100"}),
     )
+    
+    # Use only necessary fields and exclude large NCLOB fields
     employees = forms.ChoiceField(
         required=False,
-        choices=[(emp.id, emp.get_full_name()) for emp in Employee.objects.all()],
+        choices=[],  # Will be populated in __init__
         widget=forms.SelectMultiple,
     )
+    
     status = forms.ChoiceField(required=False, choices=status_choices)
+    
+    # Use only necessary fields and exclude large NCLOB fields
     contributions = forms.ChoiceField(
         required=False,
-        choices=[
-            (emp.id, emp.get_full_name())
-            for emp in get_active_employees(None)["get_active_employees"]
-        ],
+        choices=[],  # Will be populated in __init__
         widget=forms.SelectMultiple,
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Fetch only necessary fields for employees to avoid NCLOB fields
+        employee_choices = [
+            (emp.id, emp.get_full_name()) 
+            for emp in Employee.objects.only('id', 'employee_first_name', 'employee_last_name')  # Only fetch necessary fields
+        ]
+        self.fields['employees'].choices = employee_choices
+
+        # Dynamically load contributions choices (active employees)
+        active_employees = get_active_employees()  # Ensure this returns Employee instances
+        contributions_choices = [
+            (emp.id, emp.get_full_name())  # This assumes emp is an Employee object with an id and get_full_name()
+            for emp in active_employees
+        ]
+        self.fields['contributions'].choices = contributions_choices
+
+# Helper function to retrieve active employees (this function should return Employee objects)
+def get_active_employees():
+    # Ensure that we are retrieving Employee instances, not just strings.
+    return Employee.objects.filter(is_active=True).only('id', 'employee_first_name', 'employee_last_name')

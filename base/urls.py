@@ -745,11 +745,6 @@ urlpatterns = [
         name="enable-account-block-unblock",
     ),
     path(
-        "enable-profile-edit-feature",
-        views.enable_profile_edit_feature,
-        name="enable-profile-edit-feature",
-    ),
-    path(
         "rwork-individual-view/<int:instance_id>/",
         views.rotating_work_individual_view,
         name="rwork-individual-view",
@@ -969,11 +964,7 @@ urlpatterns = [
         "announcement-viewed-by", announcement.viewed_by, name="announcement-viewed-by"
     ),
     path("driver-viewed", views.driver_viewed_status, name="driver-viewed"),
-    path(
-        "dashboard-components-toggle",
-        views.dashboard_components_toggle,
-        name="dashboard-components-toggle",
-    ),
+    path("employee-charts", views.employee_charts, name="employee-charts"),
     path("employee-chart-show", views.employee_chart_show, name="employee-chart-show"),
     path(
         "settings/enable-biometric-attendance/",

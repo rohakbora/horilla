@@ -37,7 +37,6 @@ from django.utils.translation import gettext as _
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from accessibility.models import DefaultAccessibility
 from base.backends import ConfiguredEmailBackend
 from base.decorators import (
     shift_request_change_permission,
@@ -159,9 +158,7 @@ from employee.models import (
     Employee,
     EmployeeGeneralSetting,
     EmployeeWorkInformation,
-    ProfileEditFeature,
 )
-from horilla import horilla_apps
 from horilla.decorators import (
     delete_permission,
     duplicate_permission,
@@ -176,7 +173,6 @@ from horilla.horilla_settings import (
     DB_INIT_PASSWORD,
     DYNAMIC_URL_PATTERNS,
     FILE_STORAGE,
-    NO_PERMISSION_MODALS,
 )
 from horilla.methods import get_horilla_model_class, remove_dynamic_url
 from horilla_audit.forms import HistoryTrackingFieldsForm
@@ -560,49 +556,45 @@ def initialize_job_position_delete(request, obj_id):
 
 def login_user(request):
     """
-    Handles user login and authentication.
+    This method is used render login template and authenticate user
     """
     if request.method == "POST":
-        username = request.POST.get("username")
-        password = request.POST.get("password")
-        next_url = request.GET.get("next", "/")
+        username = request.POST["username"]
+        password = request.POST["password"]
+        next_url = request.GET.get("next")
         query_params = request.GET.dict()
-        query_params.pop("next", None)
-        params = urlencode(query_params)
+        if "next" in query_params:
+            del query_params["next"]
 
+        params = f"{urlencode(query_params)}"
         user = authenticate(request, username=username, password=password)
-
-        if not user:
+        if user is None:
             user_object = User.objects.filter(username=username).first()
-            if user_object and not user_object.is_active:
-                messages.warning(request, _("Access Denied: Your account is blocked."))
-            else:
+            is_active = user_object.is_active if user_object else None
+            if is_active is True or is_active is None:
                 messages.error(request, _("Invalid username or password."))
-            return redirect("login")
-
-        employee = getattr(user, "employee_get", None)
-        if employee is None:
-            messages.error(
-                request,
-                _("An employee related to this user's credentials does not exist."),
-            )
-            return redirect("login")
-        if not employee.is_active:
+            else:
+                messages.warning(
+                    request,
+                    _("Access Denied: Your login credentials are currently blocked."),
+                )
+            return redirect("/login")
+        if user.employee_get.is_active == False:
             messages.warning(
                 request,
                 _(
                     "This user is archived. Please contact the manager for more information."
                 ),
             )
-            return redirect("login")
-
+            return redirect("/login")
         login(request, user)
-        messages.success(request, _("Login successful."))
-
-        if params:
-            next_url += f"?{params}"
-        return redirect(next_url)
-
+        messages.success(request, _("Login Success"))
+        if next_url:
+            url = f"{next_url}"
+            if params:
+                url += f"?{params}"
+            return redirect(url)
+        return redirect("/")
     return render(
         request, "login.html", {"initialize_database": initialize_database_condition()}
     )
@@ -912,7 +904,6 @@ def user_group_table(request):
     """
     permissions = []
     apps = APPS
-    no_permission_models = NO_PERMISSION_MODALS
     form = UserGroupForm()
     for app_name in apps:
         app_models = []
@@ -936,7 +927,6 @@ def user_group_table(request):
         {
             "permissions": permissions,
             "form": form,
-            "no_permission_models": no_permission_models,
         },
     )
 
@@ -981,7 +971,6 @@ def user_group(request):
     permissions = []
 
     apps = APPS
-    no_permission_models = NO_PERMISSION_MODALS
     form = UserGroupForm()
     for app_name in apps:
         app_models = []
@@ -1001,7 +990,6 @@ def user_group(request):
             "permissions": permissions,
             "form": form,
             "groups": paginator_qry(groups, request.GET.get("page")),
-            "no_permission_models": no_permission_models,
         },
     )
 
@@ -1015,7 +1003,6 @@ def user_group_search(request):
     permissions = []
 
     apps = APPS
-    no_permission_models = NO_PERMISSION_MODALS
     form = UserGroupForm()
     for app_name in apps:
         app_models = []
@@ -1038,7 +1025,6 @@ def user_group_search(request):
             "permissions": permissions,
             "form": form,
             "groups": paginator_qry(groups, request.GET.get("page")),
-            "no_permission_models": no_permission_models,
         },
     )
 
@@ -1233,7 +1219,6 @@ def object_duplicate(request, obj_id, **kwargs):
     template = kwargs["template"]
     original_object = model.objects.get(id=obj_id)
     form = form_class(instance=original_object)
-    searchWords = form.get_template_language()
     if request.method == "GET":
         for field_name, field in form.fields.items():
             if isinstance(field, forms.CharField):
@@ -1253,11 +1238,11 @@ def object_duplicate(request, obj_id, **kwargs):
             new_object.id = None
             new_object.save()
             return HttpResponse("<script>window.location.reload()</script>")
+
     context = {
         kwargs.get("form_name", "form"): form,
         "obj_id": obj_id,
         "duplicate": True,
-        "searchWords": searchWords,
     }
     return render(request, template, context)
 
@@ -1354,25 +1339,6 @@ def mail_server_conf(request):
 @permission_required("base.view_dynamicemailconfiguration")
 def mail_server_test_email(request):
     instance_id = request.GET.get("instance_id")
-    white_labelling = getattr(horilla_apps, "WHITE_LABELLING", False)
-    image_path = path.join(settings.STATIC_ROOT, "images/ui/horilla-logo.png")
-    company_name = "Horilla"
-
-    if white_labelling:
-        hq = Company.objects.filter(hq=True).last()
-        try:
-            company = (
-                request.user.employee_get.get_company()
-                if request.user.employee_get.get_company()
-                else hq
-            )
-        except:
-            company = hq
-
-        if company:
-            company_name = company.company
-            image_path = path.join(settings.MEDIA_ROOT, company.icon.name)
-
     form = DynamicMailTestForm()
     if request.method == "POST":
         form = DynamicMailTestForm(request.POST)
@@ -1381,26 +1347,26 @@ def mail_server_test_email(request):
             subject = _("Test mail from Horilla")
 
             # HTML content
-            html_content = f"""
+            html_content = """
             <html>
                 <body style="font-family: Arial, sans-serif; margin: 0; padding: 0;">
                     <table align="center" width="600" cellpadding="0" cellspacing="0" border="0" style="border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden;">
                         <tr>
                             <td align="center" bgcolor="#4CAF50" style="padding: 20px 0;">
-                                <h1 style="color: #ffffff; margin: 0;">{company_name}</h1>
+                                <h1 style="color: #ffffff; margin: 0;">Horilla</h1>
                             </td>
                         </tr>
                         <tr>
                             <td style="padding: 20px;">
                                 <h3 style="color: #4CAF50;">Email tested successfully</h3>
                                 <b><p style="font-size: 14px;">Hi,<br>
-                                    This email is being sent as part of mail sever testing from {company_name}.</p></b>
+                                    This email is being sent as part of mail sever testing from Horilla.</p></b>
                                 <img src="cid:unique_image_id" alt="Test Image" style="width: 200px; height: auto; margin: 20px 0;">
                             </td>
                         </tr>
                         <tr>
                             <td bgcolor="#f0f0f0" style="padding: 10px; text-align: center;">
-                                <p style="font-size: 12px; color: black;">&copy; {datetime.today().year} {company_name}</p>
+                                <p style="font-size: 12px; color: black;">&copy; 2024 Horilla, Inc.</p>
                             </td>
                         </tr>
                     </table>
@@ -1427,6 +1393,10 @@ def mail_server_test_email(request):
                 )
                 msg.attach_alternative(html_content, "text/html")
 
+                # Attach the image
+                image_path = path.join(
+                    settings.STATIC_ROOT, "images/ui/horilla-logo.png"
+                )
                 with open(image_path, "rb") as img:
                     msg_img = MIMEImage(img.read())
                     msg_img.add_header("Content-ID", "<unique_image_id>")
@@ -3064,18 +3034,18 @@ def employee_permission_assign(request):
     """
     This method is used to assign permissions to employee user
     """
-
+    #print(108,request)  #redundant
     context = {}
     template = "base/auth/permission.html"
     if request.GET.get("profile_tab"):
         template = "tabs/group_permissions.html"
-        employees = Employee.objects.filter(id=request.GET["employee_id"]).distinct()
+        employees = Employee.objects.filter(id=request.GET["employee_id"]).distinct()    #redundant
         emoloyee = employees.first()
         context["employee"] = emoloyee
     else:
         employees = Employee.objects.filter(
             employee_user_id__user_permissions__isnull=False
-        ).distinct()
+        ).distinct()    #redundant
         context["show_assign"] = True
     permissions = []
     horilla_apps = [
@@ -3095,7 +3065,46 @@ def employee_permission_assign(request):
     ]
     installed_apps = [app for app in settings.INSTALLED_APPS if app in horilla_apps]
 
-    no_permission_models = NO_PERMISSION_MODALS
+    no_permission_models = [
+        "historicalbonuspoint",
+        "assetreport",
+        "assetdocuments",
+        "returnimages",
+        "holiday",
+        "companyleave",
+        "historicalavailableleave",
+        "historicalleaverequest",
+        "historicalleaveallocationrequest",
+        "leaverequestconditionapproval",
+        "historicalcompensatoryleaverequest",
+        "employeepastleaverestrict",
+        "overrideleaverequests",
+        "historicalrotatingworktypeassign",
+        "employeeshiftday",
+        "historicalrotatingshiftassign",
+        "historicalworktyperequest",
+        "historicalshiftrequest",
+        "multipleapprovalmanagers",
+        "attachment",
+        "announcementview",
+        "emaillog",
+        "driverviewed",
+        "dashboardemployeecharts",
+        "attendanceallowedip",
+        "tracklatecomeearlyout",
+        "historicalcontract",
+        "overrideattendance",
+        "overrideleaverequest",
+        "overrideworkinfo",
+        "multiplecondition",
+        "historicalpayslip",
+        "reimbursementmultipleattachment",
+        "historicalcontract",
+        "overrideattendance",
+        "overrideleaverequest",
+        "workrecord",
+        "historicalticket",
+    ]
     for app_name in installed_apps:
         app_models = []
         for model in get_models_in_app(app_name):
@@ -3110,8 +3119,8 @@ def employee_permission_assign(request):
             {"app": app_name.capitalize().replace("_", " "), "app_models": app_models}
         )
     context["permissions"] = permissions
-    context["no_permission_models"] = no_permission_models
     context["employees"] = paginator_qry(employees, request.GET.get("page"))
+    #print("context:",context)  #redundant
     return render(
         request,
         template,
@@ -3192,7 +3201,46 @@ def permission_table(request):
     apps = APPS
     form = AssignPermission()
 
-    no_permission_models = NO_PERMISSION_MODALS
+    no_permission_models = [
+        "historicalbonuspoint",
+        "assetreport",
+        "assetdocuments",
+        "returnimages",
+        "holiday",
+        "companyleave",
+        "historicalavailableleave",
+        "historicalleaverequest",
+        "historicalleaveallocationrequest",
+        "leaverequestconditionapproval",
+        "historicalcompensatoryleaverequest",
+        "employeepastleaverestrict",
+        "overrideleaverequests",
+        "historicalrotatingworktypeassign",
+        "employeeshiftday",
+        "historicalrotatingshiftassign",
+        "historicalworktyperequest",
+        "historicalshiftrequest",
+        "multipleapprovalmanagers",
+        "attachment",
+        "announcementview",
+        "emaillog",
+        "driverviewed",
+        "dashboardemployeecharts",
+        "attendanceallowedip",
+        "tracklatecomeearlyout",
+        "historicalcontract",
+        "overrideattendance",
+        "overrideleaverequest",
+        "overrideworkinfo",
+        "multiplecondition",
+        "historicalpayslip",
+        "reimbursementmultipleattachment",
+        "historicalcontract",
+        "overrideattendance",
+        "overrideleaverequest",
+        "workrecord",
+        "historicalticket",
+    ]
 
     for app_name in apps:
         app_models = []
@@ -3217,7 +3265,6 @@ def permission_table(request):
         {
             "permissions": permissions,
             "form": form,
-            "no_permission_models": no_permission_models,
         },
     )
 
@@ -4893,10 +4940,6 @@ def general_settings(request):
         AccountBlockUnblock.objects.exists()
         and AccountBlockUnblock.objects.first().is_enabled
     )
-    enabled_profile_edit = (
-        ProfileEditFeature.objects.exists()
-        and ProfileEditFeature.objects.first().is_enabled
-    )
     history_tracking_instance = HistoryTrackingFields.objects.first()
     history_fields_form_initial = {}
     if history_tracking_instance and history_tracking_instance.tracking_fields:
@@ -4929,7 +4972,6 @@ def general_settings(request):
             "history_fields_form": history_fields_form,
             "history_tracking_instance": history_tracking_instance,
             "enabled_block_unblock": enabled_block_unblock,
-            "enabled_profile_edit": enabled_profile_edit,
             "prefix_form": prefix_form,
             "companies": companies,
             "selected_company_id": selected_company_id,
@@ -5117,44 +5159,6 @@ def enable_account_block_unblock(request):
             _(
                 f"Account block/unblock setting has been {'enabled' if enabled else 'disabled'}."
             ),
-        )
-        if request.META.get("HTTP_HX_REQUEST"):
-            return HttpResponse()
-        return redirect(general_settings)
-    return HttpResponse(status=405)
-
-
-from accessibility.accessibility import ACCESSBILITY_FEATURE
-
-
-@login_required
-@permission_required("employee.change_employee")
-def enable_profile_edit_feature(request):
-
-    if request.method == "POST":
-        enabled = request.POST.get("enable_profile_edit") == "on"
-        instance = ProfileEditFeature.objects.first()
-        feature = DefaultAccessibility.objects.filter(feature="profile_edit").first()
-        if instance:
-            instance.is_enabled = enabled
-            instance.save()
-        else:
-            ProfileEditFeature.objects.create(is_enabled=enabled)
-
-        if enabled and not feature:
-            DefaultAccessibility.objects.create(
-                feature="profile_edit", filter={"feature": ["profile_edit"]}
-            )
-
-        if enabled:
-            if not any(item[0] == "profile_edit" for item in ACCESSBILITY_FEATURE):
-                ACCESSBILITY_FEATURE.append(("profile_edit", _("Profile Edit Access")))
-        else:
-            ACCESSBILITY_FEATURE.pop()
-
-        messages.success(
-            request,
-            _(f"Profile edit feature has been {'enabled' if enabled else 'disabled'}."),
         )
         if request.META.get("HTTP_HX_REQUEST"):
             return HttpResponse()
@@ -5533,11 +5537,8 @@ def add_more_approval_managers(request):
     if managers_count:
         managers_count = int(managers_count) + 1
         field_name = f"multi_approval_manager_{managers_count}"
-        choices = [("reporting_manager_id", _("Reporting Manager"))] + [
-            (employee.pk, str(employee)) for employee in Employee.objects.all()
-        ]
-        form.fields[field_name] = forms.ChoiceField(
-            choices=choices,
+        form.fields[field_name] = forms.ModelChoiceField(
+            queryset=Employee.objects.all(),
             widget=forms.Select(
                 attrs={
                     "class": "oh-select oh-select-2 mb-3",
@@ -5592,31 +5593,28 @@ def multiple_level_approval_create(request):
         department = Department.objects.get(id=dept_id)
         instance = MultipleApprovalCondition()
         if form.is_valid():
-            instance.department = department
-            instance.condition_field = condition_field
-            instance.condition_operator = condition_operator
-            instance.company_id = company
             if condition_operator != "range":
+                instance.department = department
+                instance.condition_field = condition_field
+                instance.condition_operator = condition_operator
                 instance.condition_value = condition_value
+                instance.company_id = company
             else:
+                instance.department = department
+                instance.condition_field = condition_field
+                instance.condition_operator = condition_operator
                 instance.condition_start_value = condition_start_value
                 instance.condition_end_value = condition_end_value
-
+                instance.company_id = company
             instance.save()
             sequence = 0
             for emp_id in condition_approval_managers:
                 sequence += 1
-                reporting_manager = None
-                try:
-                    employee_id = int(emp_id)
-                except:
-                    employee_id = None
-                    reporting_manager = emp_id
+                employee_id = int(emp_id)
                 MultipleApprovalManagers.objects.create(
                     condition_id=instance,
                     sequence=sequence,
                     employee_id=employee_id,
-                    reporting_manager=reporting_manager,
                 )
             form = MultipleApproveConditionForm()
             messages.success(
@@ -5635,11 +5633,8 @@ def edit_approval_managers(form, managers):
             form.initial["multi_approval_manager"] = manager.employee_id
         else:
             field_name = f"multi_approval_manager_{i}"
-            choices = [("reporting_manager_id", _("Reporting Manager"))] + [
-                (employee.pk, str(employee)) for employee in Employee.objects.all()
-            ]
-            form.fields[field_name] = forms.ChoiceField(
-                choices=choices,
+            form.fields[field_name] = forms.ModelChoiceField(
+                queryset=Employee.objects.all(),
                 label=_("Approval Manager {}").format(i),
                 widget=forms.Select(attrs={"class": "oh-select oh-select-2 mb-3"}),
                 required=False,
@@ -5671,17 +5666,11 @@ def multiple_level_approval_edit(request, condition_id):
             for key, value in request.POST.items():
                 if key.startswith("multi_approval_manager"):
                     sequence += 1
-                    reporting_manager = None
-                    try:
-                        employee_id = int(value)
-                    except:
-                        employee_id = None
-                        reporting_manager = value
+                    employee_id = int(value)
                     MultipleApprovalManagers.objects.create(
                         condition_id=instance,
                         sequence=sequence,
                         employee_id=employee_id,
-                        reporting_manager=reporting_manager,
                     )
     selected_company = request.session.get("selected_company")
     if selected_company != "all":
@@ -6247,7 +6236,7 @@ def driver_viewed_status(request):
 
 
 @login_required
-def dashboard_components_toggle(request):
+def employee_charts(request):
     """
     This function is used to create personalized dashboard charts for employees
     """

@@ -35,7 +35,6 @@ numpy
 openpyxl
 oscrypto
 pandas
-pdfkit
 pillow
 pycparser
 pyHanko

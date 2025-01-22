@@ -43,8 +43,6 @@ DEBUG = env("DEBUG")
 
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 
-# Application definition
-
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -80,6 +78,8 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "corsheaders.middleware.CorsMiddleware",
+
+    
     "simple_history.middleware.HistoryRequestMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -110,10 +110,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "horilla.wsgi.application"
 
-
-# Database
-# https://docs.djangoproject.com/en/4.1/ref/settings/#databases
-
 if env("DATABASE_URL", default=None):
     DATABASES = {
         "default": env.db(),
@@ -121,14 +117,8 @@ if env("DATABASE_URL", default=None):
 else:
     DATABASES = {
         "default": {
-            "ENGINE": env("DB_ENGINE", default="django.db.backends.sqlite3"),
-            "NAME": env(
-                "DB_NAME",
-                default=os.path.join(
-                    BASE_DIR,
-                    "TestDB_Horilla.sqlite3",
-                ),
-            ),
+            "ENGINE": env("DB_ENGINE", default=""),
+            "NAME": env("DB_NAME", default=""),
             "USER": env("DB_USER", default=""),
             "PASSWORD": env("DB_PASSWORD", default=""),
             "HOST": env("DB_HOST", default=""),
@@ -220,7 +210,7 @@ LOCALE_PATHS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = env("TIME_ZONE", default="Asia/Kolkata")
+TIME_ZONE = "Asia/Kolkata"
 
 USE_I18N = True
 

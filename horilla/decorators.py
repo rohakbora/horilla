@@ -231,6 +231,7 @@ def login_required(view_func):
                 url += f"&{params}"
             return redirect(url)
         try:
+            print(1,"hi108",request,args,kwargs)  #remove
             func = view_func(request, *args, **kwargs)
         except Exception as e:
             logger.error(e)

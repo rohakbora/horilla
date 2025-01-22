@@ -61,7 +61,6 @@ from payroll.forms import component_forms as forms
 from payroll.methods.deductions import update_compensation_deduction
 from payroll.methods.methods import (
     calculate_employer_contribution,
-    compute_net_pay,
     compute_salary_on_period,
     paginator_qry,
     save_payslip,
@@ -137,11 +136,11 @@ def payroll_calculation(employee, start_date, end_date):
     basic_pay = updated_basic_pay_data["compensation_amount"]
     basic_pay_deductions = updated_basic_pay_data["deductions"]
 
-    loss_of_pay_amount = 0
-    if not contract.deduct_leave_from_basic_pay:
-        loss_of_pay_amount = loss_of_pay
-    else:
-        basic_pay = basic_pay - loss_of_pay_amount
+    loss_of_pay_amount = (
+        float(loss_of_pay) if not contract.deduct_leave_from_basic_pay else 0
+    )
+
+    basic_pay = basic_pay - loss_of_pay_amount
 
     kwargs = {
         "employee": employee,
@@ -194,19 +193,6 @@ def payroll_calculation(employee, start_date, end_date):
     )
 
     net_pay = gross_pay - total_deductions
-    # loss_of_pay        -> actual lop amount
-    # loss_of_pay_amount -> actual lop if deduct from basic-
-    #                       pay from contract is enabled
-    net_pay = compute_net_pay(
-        net_pay=net_pay,
-        gross_pay=gross_pay,
-        total_pretax_deduction=total_pretax_deduction,
-        total_post_tax_deduction=total_post_tax_deduction,
-        total_tax_deductions=total_tax_deductions,
-        federal_tax=federal_tax,
-        loss_of_pay_amount=loss_of_pay_amount,
-        loss_of_pay=loss_of_pay,
-    )
     updated_net_pay_data = update_compensation_deduction(
         employee, net_pay, "net_pay", start_date, end_date
     )
@@ -708,26 +694,6 @@ def delete_deduction(request, deduction_id, emp_id=None):
     return HttpResponseRedirect(default_redirect)
 
 
-from datetime import date, timedelta
-
-
-def get_month_start_end(year):
-    start_end_dates = []
-    for month in range(1, 13):
-        # Start date is the first day of the month
-        start_date = date(year, month, 1)
-
-        # Calculate the last day of the month
-        if month == 12:  # December
-            end_date = date(year, 12, 31)
-        else:
-            next_month = date(year, month + 1, 1)
-            end_date = next_month - timedelta(days=1)
-
-        start_end_dates.append((start_date, end_date))
-    return start_end_dates
-
-
 @login_required
 @permission_required("payroll.add_payslip")
 def generate_payslip(request):
@@ -757,7 +723,6 @@ def generate_payslip(request):
             employees = form.cleaned_data["employee_id"]
             start_date = form.cleaned_data["start_date"]
             end_date = form.cleaned_data["end_date"]
-
             group_name = form.cleaned_data["group_name"]
             for employee in employees:
                 contract = Contract.objects.filter(
@@ -1832,6 +1797,9 @@ def delete_attachments(request, _reimbursement_id):
     return redirect(view_reimbursement)
 
 
+from pprint import pprint
+
+
 @login_required
 @permission_required("payroll.view_payslip")
 def get_contribution_report(request):
@@ -2001,6 +1969,8 @@ def payslip_detailed_export_data(request):
     totals.update(allowance_totals)
     totals.update(deduction_totals)
     totals.update(other_totals)
+    print(payslips[0].employee_id)
+    print(json.dumps(payslips[0].pay_head_data, indent=2))
     for payslip in payslips:
         payslip_data = {}
         other_allowances_sum = 0
@@ -2058,6 +2028,7 @@ def payslip_detailed_export_data(request):
             else:
                 data = str(value) if value is not None else ""
 
+            # print(allos)
             if allos:
                 for allowance in allos:
                     if str(allowance["title"]) == str(column_name):

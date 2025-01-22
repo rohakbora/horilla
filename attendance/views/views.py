@@ -34,12 +34,7 @@ from django.core.validators import validate_ipv46_address
 from django.db import transaction
 from django.db.models import ProtectedError
 from django.forms import ValidationError
-from django.http import (
-    HttpResponse,
-    HttpResponseBadRequest,
-    HttpResponseRedirect,
-    JsonResponse,
-)
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -1240,6 +1235,26 @@ def late_come_early_out_export(request):
 
 
 @login_required
+@permission_required("attendance.add_attendancevalidationcondition")
+def validation_condition_create(request):
+    """
+    This method render a form to create attendance validation conditions,
+    and create if the form is valid.
+    """
+    form = AttendanceValidationConditionForm()
+    condition = AttendanceValidationCondition.objects.first()
+    if request.method == "POST":
+        form = AttendanceValidationConditionForm(request.POST)
+        if form.is_valid():
+            form.save()
+    return render(
+        request,
+        "attendance/break_point/condition.html",
+        {"form": form, "condition": condition},
+    )
+
+
+@login_required
 @permission_required("attendance.change_attendancevalidationcondition")
 @require_http_methods(["POST"])
 def validation_condition_delete(request, obj_id):
@@ -2338,33 +2353,130 @@ def work_records_change_month(request):
         request, "attendance/work_record/work_record_list.html", context=context
     )
 
+# redundant
+# @login_required
+# @permission_required("attendance.view_workrecords")
+# def work_record_export(request):
+#     month = int(request.GET.get("month", date.today().month))
+#     year = int(request.GET.get("year", date.today().year))
+
+#     employees = EmployeeFilter(request.GET).qs
+#     records = WorkRecords.objects.filter(date__month=month, date__year=year)
+#     num_days = calendar.monthrange(year, month)[1]
+#     all_date_objects = [date(year, month, day) for day in range(1, num_days + 1)]
+#     leave_dates = set(monthly_leave_days(month, year))
+
+#     record_lookup = defaultdict(lambda: "ABS")
+#     for record in records:
+#         if record.date <= date.today():
+#             record_key = (record.employee_id, record.date)
+#             record_lookup[record_key] = record.work_record_type
+
+#     date_format = request.user.employee_get.get_date_format()
+#     format_string = HORILLA_DATE_FORMATS.get(date_format)
+#     formatted_dates = [day.strftime(format_string) for day in all_date_objects]
+#     data_rows = []
+
+#     for employee in employees:
+#         row_data = {"Employee": employee}
+#         for day, formatted_day in zip(all_date_objects, formatted_dates):
+#             if not day in leave_dates and day < date.today():
+#                 row_data[formatted_day] = record_lookup.get((employee, day), "EW")
+#             else:
+#                 row_data[formatted_day] = record_lookup.get((employee, day), "")
+#         data_rows.append(row_data)
+
+#     columns = ["Employee"] + formatted_dates
+#     df = pd.DataFrame(data_rows, columns=columns)
+
+#     output = io.BytesIO()
+#     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+#         df.to_excel(writer, index=False, sheet_name="Sheet1")
+#         workbook = writer.book
+#         worksheet = writer.sheets["Sheet1"]
+
+#         formats = {
+#             "ABS": workbook.add_format(
+#                 {"bg_color": "#808080", "font_color": "#ffffff"}
+#             ),
+#             "FDP": workbook.add_format(
+#                 {"bg_color": "#38c338", "font_color": "#ffffff"}
+#             ),
+#             "HDP": workbook.add_format(
+#                 {"bg_color": "#dfdf52", "font_color": "#000000"}
+#             ),
+#             "CONF": workbook.add_format(
+#                 {"bg_color": "#ed4c4c", "font_color": "#ffffff"}
+#             ),
+#             "EW": workbook.add_format({"bg_color": "#a8b1ff", "font_color": "#ffffff"}),
+#         }
+
+#         for row_idx, row in enumerate(df.itertuples(index=False), start=1):
+#             for col_idx, cell_value in enumerate(row[1:], start=1):
+#                 if cell_value in formats:
+#                     worksheet.write(row_idx, col_idx, cell_value, formats[cell_value])
+
+#         for col_idx, col in enumerate(df.columns):
+#             max_len = max(df[col].astype(str).map(len).max(), len(col))
+#             worksheet.set_column(col_idx, col_idx, max_len)
+
+#     output.seek(0)
+
+#     response = HttpResponse(
+#         output.read(),
+#         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+#     )
+#     response["Content-Disposition"] = 'attachment; filename="work_record_export.xlsx"'
+#     return response
+
 
 @login_required
 @permission_required("attendance.view_workrecords")
 def work_record_export(request):
+    # Get 'month' and 'year' parameters from query string, with validation and fallback to current values
+    month_str = request.GET.get("month", "")
+    year_str = request.GET.get("year", "")
+    
+    # Validate month and year
     try:
-        month = int(request.GET.get("month") or date.today().month)
-        year = int(request.GET.get("year") or date.today().year)
+        month = int(month_str) if month_str else date.today().month
+        if month < 1 or month > 12:
+            raise ValueError("Invalid month value")
     except ValueError:
-        return HttpResponseBadRequest("Invalid month or year parameter.")
-
+        month = date.today().month  # Default to current month if invalid
+    
+    try:
+        year = int(year_str) if year_str else date.today().year
+        if year < 1900 or year > date.today().year:
+            raise ValueError("Invalid year value")
+    except ValueError:
+        year = date.today().year  # Default to current year if invalid
+    
+    # Fetch employees and records
     employees = EmployeeFilter(request.GET).qs
     records = WorkRecords.objects.filter(date__month=month, date__year=year)
+    
+    # Get the number of days in the month
     num_days = calendar.monthrange(year, month)[1]
     all_date_objects = [date(year, month, day) for day in range(1, num_days + 1)]
+    
+    # Get leave days for the month
     leave_dates = set(monthly_leave_days(month, year))
 
+    # Prepare record lookup for employee and date combinations
     record_lookup = defaultdict(lambda: "ABS")
     for record in records:
         if record.date <= date.today():
             record_key = (record.employee_id, record.date)
             record_lookup[record_key] = record.work_record_type
 
+    # Get the date format based on the user's settings
     date_format = request.user.employee_get.get_date_format()
     format_string = HORILLA_DATE_FORMATS.get(date_format)
     formatted_dates = [day.strftime(format_string) for day in all_date_objects]
+    
+    # Prepare data rows for the Excel sheet
     data_rows = []
-
     for employee in employees:
         row_data = {"Employee": employee}
         for day, formatted_day in zip(all_date_objects, formatted_dates):
@@ -2374,42 +2486,39 @@ def work_record_export(request):
                 row_data[formatted_day] = record_lookup.get((employee, day), "")
         data_rows.append(row_data)
 
+    # Define the columns for the Excel sheet
     columns = ["Employee"] + formatted_dates
     df = pd.DataFrame(data_rows, columns=columns)
 
+    # Create the Excel file in memory
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
         df.to_excel(writer, index=False, sheet_name="Sheet1")
         workbook = writer.book
         worksheet = writer.sheets["Sheet1"]
 
+        # Format the worksheet based on work record types
         formats = {
-            "ABS": workbook.add_format(
-                {"bg_color": "#808080", "font_color": "#ffffff"}
-            ),
-            "FDP": workbook.add_format(
-                {"bg_color": "#38c338", "font_color": "#ffffff"}
-            ),
-            "HDP": workbook.add_format(
-                {"bg_color": "#dfdf52", "font_color": "#000000"}
-            ),
-            "CONF": workbook.add_format(
-                {"bg_color": "#ed4c4c", "font_color": "#ffffff"}
-            ),
+            "ABS": workbook.add_format({"bg_color": "#808080", "font_color": "#ffffff"}),
+            "FDP": workbook.add_format({"bg_color": "#38c338", "font_color": "#ffffff"}),
+            "HDP": workbook.add_format({"bg_color": "#dfdf52", "font_color": "#000000"}),
+            "CONF": workbook.add_format({"bg_color": "#ed4c4c", "font_color": "#ffffff"}),
             "EW": workbook.add_format({"bg_color": "#a8b1ff", "font_color": "#ffffff"}),
         }
 
+        # Apply formatting to the Excel sheet cells based on record type
         for row_idx, row in enumerate(df.itertuples(index=False), start=1):
             for col_idx, cell_value in enumerate(row[1:], start=1):
                 if cell_value in formats:
                     worksheet.write(row_idx, col_idx, cell_value, formats[cell_value])
 
+        # Adjust column widths based on the content
         for col_idx, col in enumerate(df.columns):
             max_len = max(df[col].astype(str).map(len).max(), len(col))
             worksheet.set_column(col_idx, col_idx, max_len)
 
+    # Prepare the HTTP response for downloading the Excel file
     output.seek(0)
-
     response = HttpResponse(
         output.read(),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -2431,6 +2540,22 @@ def enable_timerunner(request):
     time_runner.time_runner = "time_runner" in request.GET.keys()
     time_runner.save()
     return HttpResponse("success")
+
+
+@login_required
+@permission_required("attendance.view_attendancevalidationcondition")
+def validation_condition_view(request):
+    """
+    This method view attendance validation conditions.
+    """
+
+    condition = AttendanceValidationCondition.objects.first()
+    default_grace_time = GraceTime.objects.filter(is_default=True).first()
+    return render(
+        request,
+        "attendance/break_point/condition.html",
+        {"condition": condition, "default_grace_time": default_grace_time},
+    )
 
 
 @login_required
@@ -2527,22 +2652,6 @@ def grace_time_view(request):
 
 
 @login_required
-@permission_required("attendance.view_attendancevalidationcondition")
-def validation_condition_view(request):
-    """
-    This method view attendance validation conditions.
-    """
-
-    condition = AttendanceValidationCondition.objects.first()
-    default_grace_time = GraceTime.objects.filter(is_default=True).first()
-    return render(
-        request,
-        "attendance/break_point/condition.html",
-        {"condition": condition, "default_grace_time": default_grace_time},
-    )
-
-
-@login_required
 @permission_required("attendance.add_attendancevalidationcondition")
 def validation_condition_create(request):
     """
@@ -2555,7 +2664,7 @@ def validation_condition_create(request):
         if form.is_valid():
             form.save()
             messages.success(request, _("Attendance Break-point settings created."))
-            form = AttendanceValidationConditionForm()
+            return HttpResponse("<script>window.location.reload()</script>")
     return render(
         request,
         "attendance/break_point/condition_form.html",
@@ -2579,6 +2688,7 @@ def validation_condition_update(request, obj_id):
         if form.is_valid():
             form.save()
             messages.success(request, _("Attendance Break-point settings updated."))
+            return HttpResponse("<script>window.location.reload()</script>")
     return render(
         request,
         "attendance/break_point/condition_form.html",

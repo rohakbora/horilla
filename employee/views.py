@@ -17,7 +17,6 @@ import json
 import operator
 import os
 import re
-import threading
 from datetime import date, datetime, timedelta
 from urllib.parse import parse_qs
 
@@ -95,7 +94,6 @@ from employee.methods.methods import (
     bulk_create_work_types,
     convert_nan,
     get_ordered_badge_ids,
-    set_initial_password,
 )
 from employee.models import (
     BonusPoint,
@@ -2503,7 +2501,6 @@ def work_info_import(request):
                 "employee_first_name", "employee_last_name", "email"
             )
         )
-        users = []
         for work_info in work_info_dicts:
             error = False
             try:
@@ -2598,14 +2595,8 @@ def work_info_import(request):
 
         if create_work_info or not error_lists:
             try:
-                users = bulk_create_user_import(success_lists)
-                employees = bulk_create_employee_import(success_lists)
-                thread = threading.Thread(
-                    target=set_initial_password, args=(employees,)
-                )
-                thread.start()
-
-                total_count = len(employees)
+                bulk_create_user_import(success_lists)
+                total_count = bulk_create_employee_import(success_lists)
                 bulk_create_department_import(success_lists)
                 bulk_create_job_position_import(success_lists)
                 bulk_create_job_role_import(success_lists)
@@ -2836,7 +2827,7 @@ def dashboard(request):
 
 @login_required
 def total_employees_count(request):
-    employees = Employee.objects.all().count()
+    employees = Employee.objects.filter().count()
     return HttpResponse(employees)
 
 
@@ -3329,11 +3320,11 @@ def organisation_chart(request):
         reporting_managers = Employee.objects.filter(
             reporting_manager__isnull=False,
             employee_work_info__company_id=selected_company,
-        ).distinct()
+        ).distinct()    #redundant
     else:
         reporting_managers = Employee.objects.filter(
             reporting_manager__isnull=False
-        ).distinct()
+        ).distinct()    #distinct
 
     # Iterate through the queryset and add reporting manager id and name to the dictionary
     result_dict = {item.id: item.get_full_name() for item in reporting_managers}

@@ -2183,9 +2183,8 @@ class MultipleApproveConditionForm(ModelForm):
         ("ge", _("Greater Than or Equal To (>=)")),
         ("icontains", _("Contains")),
     ]
-
-    multi_approval_manager = forms.ChoiceField(
-        choices=[],
+    multi_approval_manager = forms.ModelChoiceField(
+        queryset=Employee.objects.all(),
         widget=forms.Select(attrs={"class": "oh-select oh-select-2 mb-2"}),
         label=_("Approval Manager"),
         required=True,
@@ -2208,13 +2207,6 @@ class MultipleApproveConditionForm(ModelForm):
         exclude = [
             "is_active",
         ]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        choices = [("reporting_manager_id", _("Reporting Manager"))] + [
-            (employee.pk, str(employee)) for employee in Employee.objects.all()
-        ]
-        self.fields["multi_approval_manager"].choices = choices
 
 
 class DynamicPaginationForm(ModelForm):
